@@ -3,6 +3,7 @@ from workload import Workload
 from simulator import Simulator
 from typing import Dict, List
 import numpy as np
+import os
 
 
 class FakeSimulator(Simulator):
@@ -51,7 +52,8 @@ class FakeFunctions(object):
 
 class TestWorkload(unittest.TestCase):
     def test_add_workload(self):
-        csv_file = "test_data/test_workload.csv"
+        cur_dir = os.path.dirname(__file__)
+        csv_file = os.path.join(cur_dir, "test_data/test_workload.csv")
         test_workload = Workload()
         test_workload.add_workload(csv_file)
         self.assertEqual(len(test_workload.requests), 9)
@@ -62,7 +64,8 @@ class TestWorkload(unittest.TestCase):
         self.assertEqual(test_workload.max_count, 1440 * 2)
 
     def test_run(self):
-        csv_file = "test_data/test_workload.csv"
+        cur_dir = os.path.dirname(__file__)
+        csv_file = os.path.join(cur_dir, "test_data/test_workload.csv")
         test_workload = Workload()
         test_workload.add_workload(csv_file)
         test_simulator = FakeSimulator(test_workload)
