@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from typing import Dict
 
 if TYPE_CHECKING:
     from simulator import Simulator
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
 class Workload(object):
     def __init__(self):
         self.simulator = None
-        self.requests = {}
+        self.requests: Dict[str, np.ndarray] = {}
         self.current_index = -1
         self.max_count = 0
 
@@ -22,7 +23,7 @@ class Workload(object):
         requests = pd.read_csv(csv_file)
         for _, row in requests.iterrows():
             hash_function = row[2]
-            row = row.iloc[4:20]
+            row = row.iloc[4:]
             if hash_function not in self.requests:
                 self.requests[hash_function] = row.values
             else:
@@ -36,7 +37,7 @@ class Workload(object):
             for hash_function, _ in self.requests.items():
                 self.simulator.function.update(
                     self.requests[hash_function][self.current_index],
-                    not self.simulator.env.now,
+                    self.simulator.env.now,
                     hash_function)
             yield self.simulator.env.timeout(1)
         self.simulator.is_finished = True
