@@ -58,7 +58,7 @@ class Functions(object):
             return
         self.instances[hash_function] = \
             [instance for instance in self.instances[hash_function]
-             if not instance.check(now) and not instance.warm]
+             if not instance.check(now) or instance.warm]
 
     def update(self, request_count: int, now: int, hash_function: str):
         if request_count == 0:
@@ -74,7 +74,7 @@ class Functions(object):
         for index in range(len(self.instances[hash_function])):
             if self.instances[hash_function][index].update(
                     now, default_info.get_exec_time_min(hash_function),
-                    default_info.get_cold_time_min(hash_function)):
+                    0):
                 request_count -= 1
                 self.warm_start[hash_function] += 1
                 if request_count == 0:
