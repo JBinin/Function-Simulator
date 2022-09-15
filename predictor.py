@@ -79,12 +79,6 @@ class Histogram(PredictAlgorithm):
             self.pre_warm_window = int(self.pre_warm_window * 0.9)
 
 
-class HybridHistogram(object):
-    def __init__(self):
-        self.predict_request_count = 0
-        self.predict_request_time = 0
-
-
 class IceBreaker(PredictAlgorithm):
     def __init__(self, harmonics: int = 10):
         super().__init__()
