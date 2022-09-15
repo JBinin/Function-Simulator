@@ -10,9 +10,8 @@ csv_file_pre = "invocations_per_function_md.anon.d"
 
 trace = Workload()
 
-for i in range(1, 2):
-    csv_file = os.path.join(data_path, "{:02d}.csv".format(i))
-    csv_file = data_path + csv_file
+for i in range(1, 15):
+    csv_file = os.path.join(data_path, csv_file_pre + "{:02d}.csv".format(i))
     trace.add_workload(csv_file)
 
 simulator = Simulator(trace)
