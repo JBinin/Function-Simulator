@@ -18,6 +18,7 @@ class Simulator(object):
     def run(self):
         self.env.process(self.monitor.run())
         self.env.process(self.workload.run())
+        self.env.process(self.function.run())
         self.env.run()
 
     def finished(self) -> bool:

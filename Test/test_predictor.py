@@ -8,15 +8,15 @@ class TestHistogram(unittest.TestCase):
         test_predictor = Histogram(10)
         states = [1, 0, 0, 9, 0]
         for index, s in enumerate(states):
-            test_predictor.predict(s, index)
+            test_predictor.predict(s, index, 1)
         self.assertEqual(test_predictor.pre_warm_window, 0)
         self.assertEqual(test_predictor.keep_alive_window, 2)
 
     def test_cv(self):
         test_cv = Histogram(20)
-        states = [1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0]
+        states = [1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1]
         for index, s in enumerate(states):
-            test_cv.predict(s, index)
+            test_cv.predict(s, index, 1)
         self.assertEqual(test_cv.keep_alive_window, 20)
         self.assertEqual(test_cv.pre_warm_window, 0)
 

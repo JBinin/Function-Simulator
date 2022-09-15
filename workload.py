@@ -34,10 +34,6 @@ class Workload(object):
     def run(self):
         while self.current_index + 1 < self.max_count and not self.simulator.finished():
             self.current_index += 1
-            for hash_function, _ in self.requests.items():
-                self.simulator.function.update(
-                    self.requests[hash_function][self.current_index],
-                    self.simulator.env.now,
-                    hash_function)
+            self.simulator.function.predict_trigger.succeed()
             yield self.simulator.env.timeout(1)
         self.simulator.is_finished = True

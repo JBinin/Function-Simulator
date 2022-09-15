@@ -4,6 +4,7 @@ from simulator import Simulator
 from typing import Dict, List
 import numpy as np
 import os
+from function import Functions
 
 
 class FakeSimulator(Simulator):
@@ -21,21 +22,24 @@ class FakeSimulator(Simulator):
         overwrite run() for test
         """
         self.env.process(self.workload.run())
+        self.env.process(self.function.run())
         self.env.run()
 
 
-class FakeFunctions(object):
+class FakeFunctions(Functions):
     """
     implement a function class for test
     """
 
     def __init__(self):
+        super().__init__()
         self.simulator = None
         self.requests: Dict[str, List[int]] = {}
         self.timestamp: Dict[str, List[int]] = {}
 
     def attach(self, simulator: FakeSimulator):
         self.simulator = simulator
+        self.predict_trigger = self.simulator.env.event()
 
     def update(self, request_count: int, now: int, hash_function: str):
         """
