@@ -36,7 +36,8 @@ class Histogram(PredictAlgorithm):
         :param function_exec_time: the exec time for this invocation, used for next predict
         :return: None
         """
-
+        if state == 0:
+            return
         # first invocation
         if self.last_predict_time == -1:
             self.last_predict_time = now
@@ -57,7 +58,8 @@ class Histogram(PredictAlgorithm):
 
     def update_windows(self):
         cv = coefficient_of_variation(self.it_distribution)
-        if cv <= 2:
+        # cv < 2:
+        if cv <= 2 or self.it_count < 10:
             self.keep_alive_window = self.windows
             self.pre_warm_window = 0
         else:
@@ -70,7 +72,7 @@ class Histogram(PredictAlgorithm):
                 if not low_get and total >= low:
                     self.pre_warm_window = i - 1
                     low_get = True
-                if total >= high:
+                if low_get and total >= high:
                     self.keep_alive_window = i + 1 - self.pre_warm_window
                     break
             # to give the policy more room for error

@@ -6,7 +6,7 @@ from predictor import Histogram
 class TestHistogram(unittest.TestCase):
     def test_predict(self):
         test_predictor = Histogram(10)
-        states = [1, 0, 0, 9, 0]
+        states = [1, 0, 0, 10, 0]
         for index, s in enumerate(states):
             test_predictor.predict(s, index, 1)
         self.assertEqual(test_predictor.pre_warm_window, 0)
