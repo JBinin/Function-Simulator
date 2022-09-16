@@ -27,6 +27,5 @@ class Monitor(object):
         }
         self.states.append(state)
         pd.DataFrame(self.states).to_csv("monitor_data.csv")
-        pd.DataFrame.from_dict(
-            self.simulator.function.cold_start, orient="index"
-        ).to_csv("cold_start.csv")
+        cold_or_warm_start = [self.simulator.function.cold_start, self.simulator.function.warm_start]
+        pd.DataFrame(cold_or_warm_start, index=["cold", "warm"]).transpose().to_csv("cold_or_warm_start.csv")
