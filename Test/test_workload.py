@@ -80,6 +80,22 @@ class TestWorkload(unittest.TestCase):
         self.assertEqual(test_simulator.function.timestamp[hash_function_example],
                          list(range(0, test_simulator.workload.max_count)))
 
+    def test_workload_dataset(self):
+        data_path = "Dataset/azure-functions-dataset2019/"
+        cur_path = os.path.dirname(__file__)
+        parent_path = os.path.abspath(cur_path + os.path.sep + "..")
+        data_path = os.path.join(parent_path, data_path)
+        trace = Workload()
+        for i in range(1, 3):
+            csv_file = os.path.join(data_path, "invocations_per_function_md.anon.d{:02d}.csv".format(i))
+            trace.add_workload(csv_file)
+
+        count = 0
+        for hash_function in trace.requests.keys():
+            if trace.requests[hash_function].size != trace.max_count:
+                count += 1
+        self.assertEqual(count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
