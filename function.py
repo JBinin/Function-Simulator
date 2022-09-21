@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from simulator import Simulator
 
 from info import default_info
-from simpy.util import start_delayed
 
 
 class InstanceState(object):
@@ -16,8 +15,22 @@ class InstanceState(object):
         self.last_request_start_time = 0
         self.execution_latency = 0
         self.cold_start_latency = 0
-        self.memory = 0
-        self.cpu = 0
+        self.memory = 1
+        self.cpu = 1
+        # time stamp of pre warm
+        # to calculate the wasted time
+        self.pre_warm_load_time = None
+
+    def set_pre_warm_load_time(self, time: int):
+        self.pre_warm_load_time = time
+
+    # get wasted time and reset the pre warm load time to -1
+    def wasted_time_and_reset(self, now: int) -> int:
+        if self.pre_warm_load_time is None:
+            return 0
+        wasted_time = now - self.pre_warm_load_time
+        self.pre_warm_load_time = None
+        return wasted_time
 
     def check(self, now) -> bool:
         if self.idle:
@@ -25,7 +38,6 @@ class InstanceState(object):
         if now - self.last_request_start_time \
                 >= self.execution_latency + self.cold_start_latency:
             self.idle = True
-            self.warm = False
         return self.idle
 
     def update(self, now: int, execution_latency: int, cold_start_latency: int) -> bool:
@@ -46,6 +58,9 @@ class Functions(object):
         self.predictors: Dict[str, Histogram] = {}
         self.cold_start: Dict[str, int] = {}
         self.warm_start: Dict[str, int] = {}
+        self.wasted_time: Dict[str, int] = {}
+        self.event_list: Dict[int, List[Callable]] = {}
+        self.last_currency: Dict[str, int] = {}
 
         self.predict_trigger = None
 
@@ -53,29 +68,35 @@ class Functions(object):
         self.simulator = simulator
         self.predict_trigger = self.simulator.env.event()
 
-    def clear_idle_instances(self, now: int, hash_function: str):
-        if hash_function not in self.instances:
-            return
-        self.instances[hash_function] = \
-            [instance for instance in self.instances[hash_function]
-             if not instance.check(now) or instance.warm]
-
     def update(self, request_count: int, now: int, hash_function: str):
         if request_count == 0:
+            self.process_event()
             return
         self.update_instance(request_count, now, hash_function)
+        self.update_currency(hash_function)
+        self.process_event()
         self.update_predictor(request_count, now, hash_function)
+
+    def update_currency(self, hash_function: str):
+        if hash_function in self.instances.keys():
+            currency = len(self.instances[hash_function])
+            if currency != 0:
+                self.last_currency[hash_function] = currency
 
     def update_instance(self, request_count: int, now: int, hash_function: str):
         if hash_function not in self.instances:
             self.instances[hash_function] = []
             self.cold_start[hash_function] = 0
             self.warm_start[hash_function] = 0
+            self.wasted_time[hash_function] = 0
+
         for index in range(len(self.instances[hash_function])):
-            if self.instances[hash_function][index].update(
+            instance = self.instances[hash_function][index]
+            if instance.update(
                     now, default_info.get_exec_time_min(hash_function),
                     0):
                 request_count -= 1
+                self.wasted_time[hash_function] += instance.wasted_time_and_reset(now)
                 self.warm_start[hash_function] += 1
                 if request_count == 0:
                     return
@@ -86,19 +107,40 @@ class Functions(object):
         self.cold_start[hash_function] += request_count
 
     def clean(self, time: int, hash_function: str):
-        if self.predictors[hash_function].last_predict_time == time:
-            self.instances[hash_function] = []
+        def real_function():
+            if self.predictors[hash_function].last_predict_time == time:
+                for instance in self.instances[hash_function]:
+                    self.wasted_time[hash_function] += instance.wasted_time_and_reset(self.simulator.env.now)
+                self.instances[hash_function] = []
 
-    def create_instance(self, time: int, hash_function: str, currency: int, keep_alive_window: int):
-        if self.predictors[hash_function].last_predict_time == time:
-            instance = InstanceState()
-            instance.warm = True
-            self.instances[hash_function] = [instance] * currency
-            self.duration_with_no_invocation(keep_alive_window, hash_function, self.clean)
+        return real_function
 
-    def duration_with_no_invocation(self, duration_time: int, hash_function: str, task: Callable, *args) -> bool:
+    def tag_pre_warm_time(self, time: int, hash_function: str):
+        def real_function():
+            if self.predictors[hash_function].last_predict_time == time:
+                for instance in self.instances[hash_function]:
+                    instance.set_pre_warm_load_time(self.simulator.env.now)
+                    instance.warm = True
+                    instance.idle = True
+
+        return real_function
+
+    def create_instance(self, time: int, hash_function: str, currency: int):
+        def real_function():
+            if self.predictors[hash_function].last_predict_time == time:
+                instance = InstanceState()
+                instance.warm = True
+                self.instances[hash_function] = [instance] * currency
+
+        return real_function
+
+    def duration_with_no_invocation(self, duration_time: int, hash_function: str, task: Callable, *args):
         record_last_predict_time = self.predictors[hash_function].last_predict_time
-        yield start_delayed(self.simulator.env, task(record_last_predict_time, hash_function, *args), duration_time)
+        key = self.simulator.env.now + duration_time
+        if key not in self.event_list.keys():
+            self.event_list[key] = []
+
+        self.event_list[key].append(task(record_last_predict_time, hash_function, *args))
 
     def update_predictor(self, request_count: int, now: int, hash_function: str):
         if hash_function not in self.predictors:
@@ -108,26 +150,37 @@ class Functions(object):
 
         pre_warm_window = self.predictors[hash_function].pre_warm_window
         keep_alive_window = self.predictors[hash_function].keep_alive_window
-        self.clear_idle_instances(now, hash_function)
 
         if pre_warm_window == 0:
-            for instance in self.instances[hash_function]:
-                instance.warm = True
+            self.duration_with_no_invocation(default_info.get_exec_time_min(hash_function), hash_function,
+                                             self.tag_pre_warm_time)
             self.duration_with_no_invocation(
                 keep_alive_window + default_info.get_exec_time_min(hash_function),
                 hash_function, self.clean)
         else:
-            currency = len(self.instances[hash_function])
+            currency = self.last_currency[hash_function]
             self.duration_with_no_invocation(default_info.get_exec_time_min(hash_function), hash_function, self.clean)
-            self.duration_with_no_invocation(pre_warm_window, hash_function, self.create_instance, currency,
-                                             keep_alive_window)
+            self.duration_with_no_invocation(default_info.get_exec_time_min(hash_function) + pre_warm_window,
+                                             hash_function, self.create_instance, currency)
+            self.duration_with_no_invocation(default_info.get_exec_time_min(hash_function) + pre_warm_window,
+                                             hash_function, self.tag_pre_warm_time)
+            self.duration_with_no_invocation(default_info.get_exec_time_min(hash_function) + pre_warm_window +
+                                             keep_alive_window, hash_function, self.clean)
+
+    def process_event(self):
+        key = self.simulator.env.now
+        if key not in self.event_list.keys():
+            return
+        for event in self.event_list[key]:
+            event()
+        del self.event_list[key]
 
     def run(self):
         while True:
             # wait for next predict request
             yield self.predict_trigger
             real_workload = self.simulator.workload
-            for hash_function, _ in real_workload.requests.items():
+            for hash_function in real_workload.requests.keys():
                 self.update(
                     real_workload.requests[hash_function][real_workload.current_index],
                     self.simulator.env.now,
