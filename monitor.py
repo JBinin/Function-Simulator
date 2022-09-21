@@ -17,15 +17,16 @@ class Monitor(object):
 
     def run(self):
         while not self.simulator.finished():
-            state = {
-                "time_stamp": self.simulator.env.now,
-            }
-            self.states.append(state)
+            # state = {
+            #     "time_stamp": self.simulator.env.now,
+            # }
+            # self.states.append(state)
             yield self.simulator.env.timeout(1)
-        state = {
-            "time_stamp": self.simulator.env.now,
-        }
-        self.states.append(state)
-        pd.DataFrame(self.states).to_csv("monitor_data.csv")
-        cold_or_warm_start = [self.simulator.function.cold_start, self.simulator.function.warm_start]
-        pd.DataFrame(cold_or_warm_start, index=["cold", "warm"]).transpose().to_csv("cold_or_warm_start.csv")
+        # state = {
+        #     "time_stamp": self.simulator.env.now,
+        # }
+        # self.states.append(state)
+        # pd.DataFrame(self.states).to_csv("monitor_data.csv")
+        result = [self.simulator.function.cold_start, self.simulator.function.warm_start,
+                  self.simulator.function.wasted_time]
+        pd.DataFrame(result, index=["cold", "warm", "wasted_time"]).transpose().to_csv("result.csv")
