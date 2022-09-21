@@ -29,4 +29,5 @@ class Monitor(object):
         # pd.DataFrame(self.states).to_csv("monitor_data.csv")
         result = [self.simulator.function.cold_start, self.simulator.function.warm_start,
                   self.simulator.function.wasted_time]
-        pd.DataFrame(result, index=["cold", "warm", "wasted_time"]).transpose().to_csv("result.csv")
+        pd.DataFrame(result, index=["cold", "warm", "wasted_time"]).transpose().to_csv(
+            self.simulator.policy + "_result.csv")
