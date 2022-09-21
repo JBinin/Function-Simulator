@@ -54,16 +54,6 @@ class TestFunctions(unittest.TestCase):
         self.test_simulator.function.update_instance(1, 0, "function1")
         self.assertEqual(test_function.warm_start["function1"], 1)
 
-    def test_clear_idle_instances(self):
-        # create a new Functions for test
-        self.test_simulator.function = Functions()
-        self.test_simulator.function.update_instance(1, 0, "function1")
-        test_function = self.test_simulator.function
-        test_function.clear_idle_instances(0, "function1")
-        self.assertEqual(len(test_function.instances["function1"]), 1)
-        test_function.clear_idle_instances(1, "function1")
-        self.assertEqual(len(test_function.instances["function1"]), 0)
-
 
 if __name__ == "__main__":
     unittest.main()
