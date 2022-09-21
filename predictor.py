@@ -16,6 +16,23 @@ class PredictAlgorithm(object):
         self.keep_alive_window = 10
         self.last_predict_time = -1
 
+    def predict(self, *args):
+        pass
+
+
+class DefaultKeepalive(PredictAlgorithm):
+    def __init__(self, keep_alive_window):
+        super().__init__()
+        self.keep_alive_window = keep_alive_window
+        self.last_predict_time = -1
+        self.last_function_exec_time = 0
+
+    def predict(self, state: int, now: int, function_exec_time: int):
+        if state == 0:
+            return
+        self.last_predict_time = now
+        self.last_function_exec_time = function_exec_time
+
 
 class Histogram(PredictAlgorithm):
     def __init__(self, windows: int):
@@ -81,7 +98,7 @@ class Histogram(PredictAlgorithm):
             self.pre_warm_window = int(self.pre_warm_window * 0.9)
 
 
-class IceBreaker(PredictAlgorithm):
+class IceBreaker(object):
     def __init__(self, harmonics: int = 10):
         super().__init__()
         self.harmonics = harmonics
@@ -94,7 +111,6 @@ class IceBreaker(PredictAlgorithm):
         p = np.polyfit(t, trace, 1)
         trace_no_trend = trace - p[0] * t
         trace_freq = fft.fft(trace_no_trend)
-        print(trace_freq)
         f = fft.fftfreq(n)
         index = list(range(n))
         index.sort(key=lambda j: np.absolute(f[j]))
@@ -106,3 +122,23 @@ class IceBreaker(PredictAlgorithm):
             phase = np.angle(trace_freq[i])
             resorted_sig += amplitude * np.cos(2 * np.pi * f[i] * t_predict + phase)
         return list(resorted_sig + p[0] * t_predict)
+
+    def fourierExtrapolation(self, x, n_predict):
+        n = x.size
+        n_harm = 10  # number of harmonics in model
+        t = np.arange(0, n)
+        p = np.polyfit(t, x, 1)  # find linear trend in x
+        x_notrend = x - p[0] * t  # detrended x
+        x_freqdom = fft.fft(x_notrend)  # detrended x in frequency domain
+        f = fft.fftfreq(n)  # frequencies
+        indexes = list(range(n))
+        # sort indexes by frequency, lower -> higher
+        indexes.sort(key=lambda i: np.absolute(f[i]))
+
+        t = np.arange(0, n + n_predict)
+        restored_sig = np.zeros(t.size)
+        for i in indexes[:1 + n_harm * 2]:
+            ampli = np.absolute(x_freqdom[i]) / n  # amplitude
+            phase = np.angle(x_freqdom[i])  # phase
+            restored_sig += ampli * np.cos(2 * np.pi * f[i] * t + phase)
+        return restored_sig + p[0] * t

@@ -14,12 +14,18 @@ class Simulator(object):
         self.monitor = Monitor()
         self.monitor.attach(self)
         self.is_finished = False
+        self.policy = "DefaultKeepalive"
+        self.policy_args = [60 * 4]
 
     def run(self):
         self.env.process(self.monitor.run())
         self.env.process(self.workload.run())
         self.env.process(self.function.run())
         self.env.run()
+
+    def set_policy(self, policy: str, *args):
+        self.policy = policy
+        self.policy_args = list(args)
 
     def finished(self) -> bool:
         return self.is_finished

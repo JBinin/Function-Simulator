@@ -1,6 +1,8 @@
 from __future__ import annotations
+
+import utility
+from predictor import PredictAlgorithm
 from typing import List, TYPE_CHECKING, Dict, Callable
-from predictor import Histogram
 
 if TYPE_CHECKING:
     from simulator import Simulator
@@ -55,7 +57,7 @@ class Functions(object):
     def __init__(self):
         self.instances: Dict[str, List[InstanceState]] = {}
         self.simulator = None
-        self.predictors: Dict[str, Histogram] = {}
+        self.predictors: Dict[str, PredictAlgorithm] = {}
         self.cold_start: Dict[str, int] = {}
         self.warm_start: Dict[str, int] = {}
         self.wasted_time: Dict[str, int] = {}
@@ -144,7 +146,8 @@ class Functions(object):
 
     def update_predictor(self, request_count: int, now: int, hash_function: str):
         if hash_function not in self.predictors:
-            self.predictors[hash_function] = Histogram(4 * 60)
+            self.predictors[hash_function] = utility.get_policy_predictor(self.simulator.policy,
+                                                                          *self.simulator.policy_args)
         self.predictors[hash_function].predict(
             request_count, now, default_info.get_exec_time_min(hash_function))
 
