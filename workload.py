@@ -1,9 +1,14 @@
 from __future__ import annotations
+
+import os
 from typing import TYPE_CHECKING
 
+import numpy
 import numpy as np
 import pandas as pd
 from typing import Dict
+
+import utility
 
 if TYPE_CHECKING:
     from simulator import Simulator
@@ -29,10 +34,11 @@ class Workload(object):
         for _, row in requests.iterrows():
             hash_function = row[2]
             row = row.iloc[4:]
+            row = row.astype("int")
             if hash_function not in self.requests:
                 if self.function_limit is not None and len(self.requests) >= self.function_limit:
                     continue
-                self.requests[hash_function] = np.zeros(self.max_count)
+                self.requests[hash_function] = np.zeros(self.max_count, dtype=numpy.int64)
 
             self.requests[hash_function] = \
                 np.concatenate((self.requests[hash_function], row.values), axis=None)
@@ -44,6 +50,16 @@ class Workload(object):
             if len(self.requests[key]) < self.max_count:
                 self.requests[key] = np.concatenate(
                     (self.requests[key], np.zeros(self.max_count - len(self.requests[key]))), axis=None)
+
+    def add_workload_icebreaker_selected_traces(self, txt_file_dir):
+        for lists in os.listdir(txt_file_dir):
+            if self.function_limit is not None and len(self.requests) >= self.function_limit:
+                break
+            path = os.path.join(txt_file_dir, lists)
+            if os.path.isfile(path):
+                hash_function = lists[:-4]
+                trace_data = utility.read_from_txt(path)
+                self.requests[hash_function] = trace_data
 
     def run(self):
         while self.current_index + 1 < self.max_count and not self.simulator.finished():
