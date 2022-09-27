@@ -8,10 +8,16 @@ import numpy as np
 import pandas as pd
 from typing import Dict
 
-import utility
-
 if TYPE_CHECKING:
     from simulator import Simulator
+
+
+def read_from_txt(txt_file: str) -> np.ndarray:
+    result = []
+    with open(txt_file) as f:
+        for line in f:
+            result.append(int(line))
+    return np.array(result)
 
 
 class Workload(object):
@@ -58,8 +64,14 @@ class Workload(object):
             path = os.path.join(txt_file_dir, lists)
             if os.path.isfile(path):
                 hash_function = lists[:-4]
-                trace_data = utility.read_from_txt(path)
+                trace_data = read_from_txt(path)
                 self.requests[hash_function] = trace_data
+
+    def currency_cdf(self, save_csv_file: str):
+        currency_count: Dict[str, int] = {}
+        for hash_function in self.requests.keys():
+            currency_count[hash_function] = len(set(self.requests[hash_function]))
+        pd.DataFrame([currency_count], index=["currency"]).transpose().to_csv(save_csv_file)
 
     def run(self):
         while self.current_index + 1 < self.max_count and not self.simulator.finished():

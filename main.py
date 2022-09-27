@@ -1,20 +1,22 @@
-import os
-
-from workload import Workload
 from simulator import Simulator
+from utility import read_azure_datas, cdf_plot
+from mse import mse_cdf
+import pandas as pd
 
-cur_dir = os.path.dirname(__file__)
-data_path = "Dataset/azure-functions-dataset2019/"
-data_path = os.path.join(cur_dir, data_path)
-csv_file_pre = "invocations_per_function_md.anon.d"
 
-trace = Workload()
-# trace.set_function_limit(1000)
+def run_simulate():
+    trace = read_azure_datas(2)
+    simulator = Simulator(trace)
+    simulator.set_policy("DefaultKeepalive", 10)
+    simulator.run()
 
-for i in range(1, 8):
-    csv_file = os.path.join(data_path, csv_file_pre + "{:02d}.csv".format(i))
-    trace.add_workload(csv_file)
 
-simulator = Simulator(trace)
-simulator.set_policy("DefaultKeepalive", 10)
-simulator.run()
+def run_mse_cdf():
+    mse_cdf(6, "mse_cdf.csv")
+    mse_cdf_data = pd.read_csv("mse_cdf.csv")
+    mse = mse_cdf_data["mse"].values
+    cdf_plot(mse, "mse_cdf.pdf")
+
+
+if __name__ == "__main__":
+    run_mse_cdf()
