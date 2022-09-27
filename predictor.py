@@ -1,3 +1,4 @@
+import queue
 from typing import List
 import numpy as np
 from numpy import fft
@@ -98,18 +99,30 @@ class Histogram(PredictAlgorithm):
             self.pre_warm_window = int(self.pre_warm_window * 0.9)
 
 
-class IceBreaker(object):
-    def __init__(self, harmonics: int = 10):
+class IceBreaker(PredictAlgorithm):
+    def __init__(self, harmonics: int = 10, local_windows: int = 60):
         super().__init__()
         self.harmonics = harmonics
+        self.local_windows = local_windows
+        self.history = list()
+        self.keep_alive_window = 1
+        self.last_function_exec_time = 0
 
-    def fourier_extrapolation(self, trace: List[int], n_predict: int) -> List[int]:
-        trace = np.array(trace)
+    def predict(self, state: int, now: int, function_exec_time: int):
+        self.history.append(state)
+        if len(self.history) > self.local_windows:
+            self.history.pop(0)
+        trace = np.arange(self.history)
+        predict_result = self.fourier_extrapolation(trace, 1)[0]
+        self.last_predict_time = now
+        self.last_function_exec_time = function_exec_time
+
+    def fourier_extrapolation(self, trace: np.ndarray, n_predict: int) -> List[int]:
         n = trace.size
         n_harm = self.harmonics
         t = np.arange(0, n)
-        p = np.polyfit(t, trace, 1)
-        trace_no_trend = trace - p[0] * t
+        p = np.polyfit(t, trace, 2)
+        trace_no_trend = trace - p[0] * t**2 - p[1] * t
         trace_freq = fft.fft(trace_no_trend)
         f = fft.fftfreq(n)
         index = list(range(n))
@@ -118,27 +131,7 @@ class IceBreaker(object):
         t_predict = np.arange(0, n + n_predict)
         resorted_sig = np.zeros(t_predict.size)
         for i in index[:1 + n_harm * 2]:
-            amplitude = np.absolute(trace_freq[i])
+            amplitude = np.absolute(trace_freq[i]) / n
             phase = np.angle(trace_freq[i])
             resorted_sig += amplitude * np.cos(2 * np.pi * f[i] * t_predict + phase)
-        return list(resorted_sig + p[0] * t_predict)
-
-    def fourierExtrapolation(self, x, n_predict):
-        n = x.size
-        n_harm = 10  # number of harmonics in model
-        t = np.arange(0, n)
-        p = np.polyfit(t, x, 1)  # find linear trend in x
-        x_notrend = x - p[0] * t  # detrended x
-        x_freqdom = fft.fft(x_notrend)  # detrended x in frequency domain
-        f = fft.fftfreq(n)  # frequencies
-        indexes = list(range(n))
-        # sort indexes by frequency, lower -> higher
-        indexes.sort(key=lambda i: np.absolute(f[i]))
-
-        t = np.arange(0, n + n_predict)
-        restored_sig = np.zeros(t.size)
-        for i in indexes[:1 + n_harm * 2]:
-            ampli = np.absolute(x_freqdom[i]) / n  # amplitude
-            phase = np.angle(x_freqdom[i])  # phase
-            restored_sig += ampli * np.cos(2 * np.pi * f[i] * t + phase)
-        return restored_sig + p[0] * t
+        return list(resorted_sig + p[0] * t_predict**2 + p[1] * t_predict)
