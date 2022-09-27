@@ -1,7 +1,7 @@
-import queue
 from typing import List
 import numpy as np
 from numpy import fft
+import pmdarima as pm
 
 
 def coefficient_of_variation(data):
@@ -47,6 +47,11 @@ class Histogram(PredictAlgorithm):
         self.pre_warm_window = 0
         self.keep_alive_window = self.windows
 
+        # for arima algorithm
+        self.model = None
+        self.history = []
+        self.using_arima = False
+
     def predict(self, state: int, now: int, function_exec_time: int):
         """
         :param state: currency
@@ -65,14 +70,27 @@ class Histogram(PredictAlgorithm):
         if state != 0:
             it = now - self.last_predict_time - self.last_function_exec_time
             it = max(0, it)
-            if it < self.windows:
+
+            if it < self.windows and self.using_arima is not True:
                 self.it_distribution[it] += state
                 self.it_count += state
                 self.update_windows()
             else:
-                self.out_of_bounds += 1
+                if it > self.windows:
+                    self.out_of_bounds += 1
+                self.history.append(it)
+                if self.out_of_bounds >= 5:
+                    self.using_arima = True
+                    self.arima()
             self.last_predict_time = now
             self.last_function_exec_time = function_exec_time
+
+    def arima(self):
+        self.model = pm.auto_arima(self.history, error_action='ignore', trace=False,
+                                   suppress_warnings=True)
+        predict_result = self.model.predict(n_periods=1)
+        self.pre_warm_window = int(predict_result[0] * 0.75)
+        self.keep_alive_window = int(predict_result[0] * 0.3)
 
     def update_windows(self):
         cv = coefficient_of_variation(self.it_distribution)
@@ -122,7 +140,7 @@ class IceBreaker(PredictAlgorithm):
         n_harm = self.harmonics
         t = np.arange(0, n)
         p = np.polyfit(t, trace, 2)
-        trace_no_trend = trace - p[0] * t**2 - p[1] * t
+        trace_no_trend = trace - p[0] * t ** 2 - p[1] * t
         trace_freq = fft.fft(trace_no_trend)
         f = fft.fftfreq(n)
         index = list(range(n))
@@ -134,4 +152,4 @@ class IceBreaker(PredictAlgorithm):
             amplitude = np.absolute(trace_freq[i]) / n
             phase = np.angle(trace_freq[i])
             resorted_sig += amplitude * np.cos(2 * np.pi * f[i] * t_predict + phase)
-        return list(resorted_sig + p[0] * t_predict**2 + p[1] * t_predict)
+        return list(resorted_sig + p[0] * t_predict ** 2 + p[1] * t_predict)

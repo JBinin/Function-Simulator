@@ -21,5 +21,15 @@ class TestHistogram(unittest.TestCase):
         self.assertEqual(test_cv.pre_warm_window, 0)
 
 
+class TestARIMA(unittest.TestCase):
+    def test_auto_arima(self):
+        predictor = Histogram(10)
+        states = [10, 301, 423, 710, 801, 820, 916]
+        for i in range(len(states)):
+            predictor.predict(1, states[i], 1)
+        self.assertEqual(predictor.pre_warm_window, 112)
+        self.assertEqual(predictor.keep_alive_window, 45)
+
+
 if __name__ == "__main__":
     unittest.main()
