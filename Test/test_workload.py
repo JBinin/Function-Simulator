@@ -1,10 +1,11 @@
 import unittest
-from workload import Workload
+from workload import Workload, read_from_txt
 from simulator import Simulator
 from typing import Dict, List
 import numpy as np
 import os
 from function import Functions
+from utility import read_azure_datas
 
 
 class FakeSimulator(Simulator):
@@ -55,6 +56,18 @@ class FakeFunctions(Functions):
 
 
 class TestWorkload(unittest.TestCase):
+    def test_read_from_txt(self):
+        self.txt_file = "test.txt"
+        with open(self.txt_file, "w") as f:
+            for i in range(10):
+                f.write(str(i) + "\n")
+
+        result: np.ndarray = read_from_txt(self.txt_file)
+        expect: np.ndarray = np.array(list(range(10)))
+        self.assertTrue((all(result == expect)))
+
+        os.remove(self.txt_file)
+
     def test_add_workload(self):
         cur_dir = os.path.dirname(__file__)
         csv_file = os.path.join(cur_dir, "test_data/test_workload.csv")
@@ -81,15 +94,7 @@ class TestWorkload(unittest.TestCase):
                          list(range(0, test_simulator.workload.max_count)))
 
     def test_workload_dataset(self):
-        data_path = "Dataset/azure-functions-dataset2019/"
-        cur_path = os.path.dirname(__file__)
-        parent_path = os.path.abspath(cur_path + os.path.sep + "..")
-        data_path = os.path.join(parent_path, data_path)
-        trace = Workload()
-        for i in range(1, 3):
-            csv_file = os.path.join(data_path, "invocations_per_function_md.anon.d{:02d}.csv".format(i))
-            trace.add_workload(csv_file)
-
+        trace = read_azure_datas(3)
         count = 0
         for hash_function in trace.requests.keys():
             if trace.requests[hash_function].size != trace.max_count:
