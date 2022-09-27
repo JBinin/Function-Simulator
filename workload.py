@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-import numpy
 import numpy as np
 import pandas as pd
 from typing import Dict
@@ -44,7 +43,7 @@ class Workload(object):
             if hash_function not in self.requests:
                 if self.function_limit is not None and len(self.requests) >= self.function_limit:
                     continue
-                self.requests[hash_function] = np.zeros(self.max_count, dtype=numpy.int64)
+                self.requests[hash_function] = np.zeros(self.max_count, dtype=np.int64)
 
             self.requests[hash_function] = \
                 np.concatenate((self.requests[hash_function], row.values), axis=None)
