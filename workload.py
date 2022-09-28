@@ -78,3 +78,28 @@ class Workload(object):
             self.simulator.function.predict_trigger.succeed()
             yield self.simulator.env.timeout(1)
         self.simulator.is_finished = True
+
+    def split_n_workloads(self, n: int):
+        assert n > 1
+        sub_requests = []
+        total_len = len(self.requests)
+        single_len = total_len // n
+        start = 0
+        i = 0
+        keys = list(self.requests.keys())
+        while i < n:
+            if i < n - 1:
+                sub_requests.append(
+                    {k: self.requests[k] for k in keys[start:start + single_len]}
+                )
+            else:
+                sub_requests.append(
+                    {k: self.requests[k] for k in keys[start:total_len]}
+                )
+            start += single_len
+            i += 1
+        traces = [Workload() for i in range(n)]
+        for i in range(n):
+            traces[i].requests = sub_requests[i]
+            traces[i].max_count = self.max_count
+        return traces

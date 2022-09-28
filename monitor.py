@@ -11,6 +11,10 @@ class Monitor(object):
     def __init__(self):
         self.simulator = None
         self.states = []
+        self.s = "result"
+
+    def set_filename(self, s: str):
+        self.s = s
 
     def attach(self, simulator: Simulator):
         self.simulator = simulator
@@ -30,4 +34,4 @@ class Monitor(object):
         result = [self.simulator.function.cold_start, self.simulator.function.warm_start,
                   self.simulator.function.wasted_time]
         pd.DataFrame(result, index=["cold", "warm", "wasted_time"]).transpose().to_csv(
-            self.simulator.policy + "_result.csv")
+            self.simulator.policy + "_" + self.s + ".csv")
