@@ -39,7 +39,7 @@ class Workload(object):
         for _, row in requests.iterrows():
             hash_function = row[2]
             row = row.iloc[4:]
-            row = row.astype("int")
+            row = row.astype("int64")
             if hash_function not in self.requests:
                 if self.function_limit is not None and len(self.requests) >= self.function_limit:
                     continue
@@ -54,7 +54,7 @@ class Workload(object):
         for key in self.requests.keys():
             if len(self.requests[key]) < self.max_count:
                 self.requests[key] = np.concatenate(
-                    (self.requests[key], np.zeros(self.max_count - len(self.requests[key]))), axis=None)
+                    (self.requests[key], np.zeros(self.max_count - len(self.requests[key]), dtype=np.int64)), axis=None)
 
     def add_workload_icebreaker_selected_traces(self, txt_file_dir):
         for lists in os.listdir(txt_file_dir):
