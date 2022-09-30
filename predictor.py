@@ -52,6 +52,13 @@ class Histogram(PredictAlgorithm):
         self.history = []
         self.using_arima = False
 
+    def if_using_arima(self):
+        if self.out_of_bounds > 4 and self.out_of_bounds / (self.out_of_bounds + self.out_of_bounds) > 0.5:
+            self.using_arima = True
+        else:
+            self.using_arima = False
+        return self.using_arima
+
     def predict(self, state: int, now: int, function_exec_time: int):
         """
         :param state: currency
@@ -71,26 +78,32 @@ class Histogram(PredictAlgorithm):
             it = now - self.last_predict_time - self.last_function_exec_time
             it = max(0, it)
 
-            if it < self.windows and self.using_arima is not True:
+            if it < self.windows:
                 self.it_distribution[it] += state
                 self.it_count += state
-                self.update_windows()
             else:
-                if it > self.windows:
-                    self.out_of_bounds += 1
+                self.out_of_bounds += 1
                 self.history.append(it)
-                if self.out_of_bounds >= 5:
-                    self.using_arima = True
-                    self.arima()
+
+            if self.if_using_arima():
+                self.arima()
+            else:
+                self.update_windows()
+
             self.last_predict_time = now
             self.last_function_exec_time = function_exec_time
 
     def arima(self):
         self.model = pm.auto_arima(self.history, error_action='ignore', trace=False,
                                    suppress_warnings=True)
-        predict_result = self.model.predict(n_periods=1)
-        self.pre_warm_window = int(predict_result[0] * 0.75)
-        self.keep_alive_window = int(predict_result[0] * 0.3)
+        if self.model.with_intercept:
+            predict_result = self.model.predict(n_periods=1)
+            self.pre_warm_window = int(predict_result[0] * 0.75)
+            self.keep_alive_window = int(predict_result[0] * 0.3)
+        else:
+            # if arima error
+            self.pre_warm_window = 0
+            self.keep_alive_window = self.windows
 
     def update_windows(self):
         cv = coefficient_of_variation(self.it_distribution)
