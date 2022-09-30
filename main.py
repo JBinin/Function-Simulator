@@ -41,7 +41,7 @@ def merge_csv(prefix: str, low: int, high: int):
     for i in range(low, high):
         file_name = prefix + "_" + str(i) + ".csv"
         datas.append(pd.read_csv(file_name))
-    result = pd.concat(datas)
+    result = pd.concat(datas, ignore_index=True)
     result.to_csv(prefix + "_merge.csv")
 
 
