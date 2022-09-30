@@ -5,3 +5,4 @@ simpy==4.0.1
 matplotlib~=3.6.0
 scikit-learn~=1.1.2
 statsmodels~=0.13.2
+pmdarima~=2.0.1
