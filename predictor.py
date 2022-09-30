@@ -53,7 +53,7 @@ class Histogram(PredictAlgorithm):
         self.using_arima = False
 
     def if_using_arima(self):
-        if self.out_of_bounds > 4 and self.out_of_bounds / (self.out_of_bounds + self.out_of_bounds) > 0.5:
+        if self.out_of_bounds > 4 and self.out_of_bounds / (self.out_of_bounds + self.it_count) > 0.5:
             self.using_arima = True
         else:
             self.using_arima = False
@@ -106,9 +106,8 @@ class Histogram(PredictAlgorithm):
             self.keep_alive_window = self.windows
 
     def update_windows(self):
-        cv = coefficient_of_variation(self.it_distribution)
         # cv < 2:
-        if cv <= 2 or self.it_count < 10:
+        if self.it_count < 10 or coefficient_of_variation(self.it_distribution) < 2:
             self.keep_alive_window = self.windows
             self.pre_warm_window = 0
         else:
