@@ -1,7 +1,7 @@
 from simulator import Simulator
 from workload import Workload
 from utility import read_azure_datas, cdf_plot
-from mse import mse_cdf
+from cdf import mse_cdf
 import pandas as pd
 import multiprocessing
 
@@ -21,19 +21,21 @@ def single_process_task(workload: Workload, index: int, policy: str, *args):
 
 
 def run_multi_simulate(multi_process_num: int):
-    trace = read_azure_datas(15)
+    trace = read_azure_datas(14, 1000)
     traces = trace.split_n_workloads(multi_process_num)
     policy = "Histogram"
 
-    process_list = []
-    for i in range(multi_process_num):
-        p = multiprocessing.Process(target=single_process_task, args=(traces[i], i, policy, 4 * 60))
-        process_list.append(p)
-        p.start()
-    for p in process_list:
-        p.join()
+    # process_list = []
+    # for i in range(multi_process_num):
+    #     p = multiprocessing.Process(target=single_process_task, args=(traces[i], i, policy, 4 * 60))
+    #     process_list.append(p)
+    #     p.start()
+    # for p in process_list:
+    #     p.join()
 
-    merge_csv(policy, 0, multi_process_num)
+    single_process_task(traces[4], 4, policy, 4 * 60)
+
+    # merge_csv(policy, 0, multi_process_num)
 
 
 def merge_csv(prefix: str, low: int, high: int):
