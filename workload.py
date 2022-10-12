@@ -66,6 +66,18 @@ class Workload(object):
                 trace_data = read_from_txt(path)
                 self.requests[hash_function] = trace_data
 
+    def merge_workload(self, merge_count):
+        assert merge_count > 1
+        assert len(self.requests) % merge_count == 0
+        keys = list(self.requests.keys())
+        i = 0
+        while i < len(keys):
+            key_merge = keys[i]
+            for key in keys[i + 1:i + merge_count]:
+                self.requests[key_merge] = self.requests[key_merge] + self.requests[key]
+                del self.requests[key]
+            i += merge_count
+
     def currency_cdf(self, save_csv_file: str):
         currency_count: Dict[str, int] = {}
         for hash_function in self.requests.keys():
