@@ -7,9 +7,11 @@ import multiprocessing
 
 
 def run_simulate():
-    trace = read_azure_datas(2)
+    trace = read_azure_datas(1, 100)
+    # trace.merge_workload(10)
     simulator = Simulator(trace)
-    simulator.set_policy("DefaultKeepalive", 10)
+    # simulator.set_policy("DefaultKeepalive", 10)
+    simulator.set_policy("Histogram", 4 * 60)
     simulator.run()
 
 
@@ -21,7 +23,7 @@ def single_process_task(workload: Workload, index: int, policy: str, *args):
 
 
 def run_multi_simulate(multi_process_num: int):
-    trace = read_azure_datas(1, 12)
+    trace = read_azure_datas(1, 56)
     traces = trace.split_n_workloads(multi_process_num)
     policy = "Histogram"
 
@@ -34,6 +36,15 @@ def run_multi_simulate(multi_process_num: int):
         p.join()
 
     merge_csv(policy, 0, multi_process_num)
+    run_cdf(policy + "_merge.csv")
+
+
+def run_cdf(file: str):
+    data = pd.read_csv(file)
+    data_cold = data["cold"].values
+    data_wasted = data["wasted_time"].values
+    cdf_plot(data_cold, "cold_cdf.pdf")
+    cdf_plot(data_wasted, "wasted_time_cdf.pdf")
 
 
 def merge_csv(prefix: str, low: int, high: int):
@@ -54,5 +65,5 @@ def run_mse_cdf():
 
 if __name__ == "__main__":
     # run_mse_cdf()
-
     run_multi_simulate(4)
+    # run_simulate()
